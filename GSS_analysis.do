@@ -8,7 +8,7 @@ set more off, permanently
 set maxvar 6000
 cd "/Users/carolynstein/Dropbox (MIT)/Research/Sisters"
 
-use "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Data/GSS/GSS7214_R6b.dta" 
+use "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Data/GSS/GSS_clean.dta" 
 
 * SAMPLE RESTRICTIONS **********************************************************
 
@@ -20,51 +20,7 @@ keep if sex == 1
 // 1 sibling
 keep if sibs == 1
 
-// keep if gender of sibling is known
-keep if sbsex1 == 1 | sbsex1 == 2
-
-// keep if birth year of sibling is known
-drop if sbyrbrn1 > 2000
-
-// dummy for sister
-gen sister = (sbsex1 == 2)
-
-// dummy for whether sister is older or younger
-gen age_gap = cohort - sbyrbrn1
-gen birth_order = 0
-replace birth_order = 1 if age_gap >= 0
-replace birth_order = 2 if age_gap < 0
-assert birth_order != 0
-gen older_sibling = (birth_order == 2)
-gen older_sister = (sister == 1 & birth_order == 2)
-gen younger_sister = (sister == 1 & birth_order == 1)
-
 * SUMMARY STATISTICS ***********************************************************
-
-// clean up covariates
-gen working_ft = (wrkstat == 1)
-gen working_pt = (wrkstat == 2)
-gen not_working = (wrkstat != 1 & wrkstat != 2)
-
-gen married = (marital == 1)
-gen div_sep = (marital == 3 | marital == 4)
-gen never_marr = (marital == 5)
-
-gen white = (race == 1)
-gen black = (race == 2)
-drop other
-gen other = (race ==3)
-
-gen foreign = (reg16 == 0)
-gen new_engl = (reg16 == 1)
-gen mid_atl = (reg16 == 2)
-gen e_nor_cent = (reg16 == 3)
-gen w_nor_cent = (reg16 == 4)
-gen sou_atl = (reg16 == 5)
-gen e_sou_central = (reg16 == 6)
-gen w_sou_central = (reg16 == 7)
-gen mtn = (reg16 == 8)
-gen pacific = (reg16 == 9)
 
 // list the variables I want to summarize
 local sum_stats age black white other new_engl mid_atl e_nor_cent w_nor_cent sou_atl e_sou_central w_sou_central mtn pacific educ working_ft working_pt not_working married div_sep never_marr
@@ -144,27 +100,6 @@ restore
 
 * SPOUSE WORK & EDUCATION REGRESSIONS ******************************************
 
-// clean variables
-
-// code work full-time as 2, part-time as 1, not work as 0
-rename spwrksta spwrksta1
-gen spwrksta = .
-replace spwrksta = 2 if spwrksta1 == 1
-replace spwrksta = 1 if spwrksta1 == 2
-replace spwrksta = 0 if spwrksta1 >=3 & marital == 1
-drop spwrksta1
-
-// code wives who don't work as 0 hours, not IAP
-replace sphrs1 = 0 if sphrs1 == .i & marital == 1
-
-// generate an age squared variable
-drop age2
-gen age2 = age*age
-
-// generate a spouse income variable
-gen spinc = .
-replace spinc = 1 - rincome/income if marital == 1
-
 // outcomes
 local spouse_outcomes spwrksta sphrs1 speduc spdeg
 
@@ -234,11 +169,6 @@ restore
 
 * HOUSEHOLD DUTIES REGRESSIONS *************************************************
 
-// clean variables
-
-// code repairs as missing if done by outside person
-replace repairs = . if repairs == 6
-
 // outcomes
 local hh_outcomes laundry dinner shopfood repairs
 
@@ -307,38 +237,6 @@ restore
 
 
 * ATTITUDES TOWARD WOMEN REGRESSIONS *******************************************
-
-// clean variables - make more feminist answers HIGH and binary variables 0 or 1
-
-// should women work - 0 = disapprove, 1 = approve
-rename fework fework1
-gen fework = .
-replace fework = 0 if fework1 == 2
-replace fework = 1 if fework1 == 1
-
-// women not suited for politics - 0 = agree, 1 = disagree
-rename fepol fepol1
-gen fepol = .
-replace fepol = 0 if fepol1 == 1
-replace fepol = 1 if fepol1 == 2
-
-// vote for a woman president - 0 = no, 1 = yes
-rename fepres fepres1
-gen fepres = .
-replace fepres = 0 if fepres1 == 2
-replace fepres = 1 if fepres1 == 1
-
-// husband and wife should contribute to family income
-drop twoincs1
-rename twoincs twoincs1
-gen twoincs = .
-replace twoincs = 1 if twoincs1 == 5
-replace twoincs = 2 if twoincs1 == 4
-replace twoincs = 3 if twoincs1 == 3
-replace twoincs = 4 if twoincs1 == 2
-replace twoincs = 5 if twoincs1 == 1
-
-// all others look correct, though scales are different (either 1-4 or 1-5)
 
 // outcomes 
 local att_outcomes fework fepol fepres fehelp hubbywk1 mrmom famsuffr twoincs
