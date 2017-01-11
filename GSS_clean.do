@@ -116,10 +116,34 @@ forval i = 1/9 {
 	gen any_older_brother = (older_brothers > 0)
 	gen any_younger_brother = (younger_brothers > 0)
 	
-		
-		
-		
+// exact older sibling permutation dummies
+	gen sibling_permut = ""
+	replace sibling_permut = "no older sibs" if birth_order == 1
+	replace sibling_permut = "g" if birth_order == 2 & sbtype1 == 1
+	replace sibling_permut = "b" if birth_order == 2 & sbtype1 == 3
+	replace sibling_permut = "gg" if birth_order == 3 & sbtype1 == 1 & sbtype2 == 1
+	replace sibling_permut = "gb" if birth_order == 3 & sbtype1 == 1 & sbtype2 == 3
+	replace sibling_permut = "bb" if birth_order == 3 & sbtype1 == 3 & sbtype2 == 3
+	replace sibling_permut = "bg" if birth_order == 3 & sbtype1 == 3 & sbtype2 == 1
+	replace sibling_permut = "ggg" if birth_order == 4 & sbtype1 == 1 & sbtype2 == 1 & sbtype3 == 1
+	replace sibling_permut = "ggb" if birth_order == 4 & sbtype1 == 1 & sbtype2 == 1 & sbtype3 == 3
+	replace sibling_permut = "gbg" if birth_order == 4 & sbtype1 == 1 & sbtype2 == 3 & sbtype3 == 1
+	replace sibling_permut = "gbb" if birth_order == 4 & sbtype1 == 1 & sbtype2 == 3 & sbtype3 == 3
+	replace sibling_permut = "bbb" if birth_order == 4 & sbtype1 == 3 & sbtype2 == 3 & sbtype3 == 3
+	replace sibling_permut = "bbg" if birth_order == 4 & sbtype1 == 3 & sbtype2 == 3 & sbtype3 == 1
+	replace sibling_permut = "bgb" if birth_order == 4 & sbtype1 == 3 & sbtype2 == 1 & sbtype3 == 3
+	replace sibling_permut = "bgg" if birth_order == 4 & sbtype1 == 3 & sbtype2 == 1 & sbtype3 == 1
+	encode sibling_permut, gen(older_sib_permut)
+	
+	gen next_sib = .
+	forval i = 1/9 {
+		if birth_order == `i' {
+			replace next_sib = 1 if sbsex`i' == 2
+			replace next_sib = 0 if sbsex`i' == 1
+		}
+	}
 
+	
 
 * CLEAN UP COVARIATES **********************************************************
 
@@ -154,6 +178,10 @@ gen pacific = (reg16 == 9)
 // generate an age squared variable
 drop age2
 gen age2 = age*age
+
+* INDICATORS FOR PROGRESSIVE ***************************************************
+
+gen progressive = (reg16 == 1 | reg16 == 2 | reg16 == 9) & cohort >= 1960
 
 * CLEAN UP SPOUSE OUTCOMES *****************************************************
 
