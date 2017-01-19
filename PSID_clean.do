@@ -16,6 +16,7 @@ use "PSID_individual_raw.dta"
 gen parent_ID = ER30001*1000 + ER30002
 gen ID = ER30001*1000 + ER30002
 
+// other variables
 rename ER53674 wife_hw
 rename ER53676 head_hw
 
@@ -26,6 +27,8 @@ rename ER58050 wife_income
 
 rename ER58223 head_educ
 rename ER58224 wife_educ
+
+rename ER54305 wife_in_fu
 
 keep ID wife_* head_*
 
@@ -145,6 +148,9 @@ gen yob_mob = yob + mob/12
 		egen kdyrbrn`i' = min(kidyob`i'), by(parent_ID)
 	}
 	
+	drop kidsex*
+	drop kidyob*
+	
 // generate sibling order variables
 
 	// generate blank variables for sibling sex and YOB
@@ -263,7 +269,34 @@ sort parent_ID birth_order
 keep if _merge == 3
 drop _merge
 
+// keep men
+keep if sex == 0
 
+// keep if wife currently in family unit
+keep if wife_in_fu == 1
+
+* CLEAN OUTCOMES *****************************************************************
+
+// incomes
+replace wife_income = 1 if wife_income == 0
+replace head_income = 1 if head_income == 0
+gen wife_frac_income = wife_income / (wife_income + head_income)
+
+// education
+replace wife_educ = . if wife_educ == 99
+replace head_educ = . if head_educ == 99
+gen educ_diff = wife_educ - head_educ
+
+// housework
+replace wife_hw = . if wife_hw == 998 | wife_hw == 999
+replace wife_hw = 0.1 if wife_hw == 0
+replace head_hw = . if head_hw == 998 | head_hw == 999 
+replace head_hw = 0.1 if head_hw == 0
+gen head_frac_hw = head_hw / (head_hw + wife_hw)
+
+save "PSID_clean.dta", replace
+
+erase "PSID_individual_clean.dta"
 
 
 
