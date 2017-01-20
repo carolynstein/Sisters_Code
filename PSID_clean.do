@@ -16,19 +16,52 @@ use "PSID_individual_raw.dta"
 gen parent_ID = ER30001*1000 + ER30002
 gen ID = ER30001*1000 + ER30002
 
-// other variables
+// where did head and wife grow up
+rename ER57651 head_sob
+rename ER57654 head_s_grewup
+rename ER58219 head_r_grewup
+
+rename ER57541 wife_sob
+rename ER57544 wife_s_grewup
+rename ER58221 wife_r_grewup
+
+// where did head's and wife's parents grow up
+rename ER57509 wife_father_sob
+rename ER57510 wife_father_grewup
+rename ER57519 wife_mother_sob
+rename ER57520 wife_mother_grewup
+
+
+rename ER57619 head_father_sob
+rename ER57620 head_father_grewup
+rename ER57629 head_mother_sob
+rename ER57630 head_mother_grewup
+
+// education of head's and wife's parents
+rename ER57622 head_father_educ
+rename ER57632 head_mother_educ
+
+rename ER57512 wife_father_educ
+rename ER57522 wife_mother_educ
+
+// houswork
 rename ER53674 wife_hw
 rename ER53676 head_hw
 
+// income
 rename ER54306 wife_any_income
 
 rename ER58038 head_income
 rename ER58050 wife_income
 
+// education
 rename ER58223 head_educ
 rename ER58224 wife_educ
 
+// wife in family unit?
 rename ER54305 wife_in_fu
+
+
 
 keep ID wife_* head_*
 
@@ -61,7 +94,6 @@ replace sex = 0 if CAH12 == 1
 rename CAH9 birth_order
 rename CAH15 yob
 rename CAH13 mob
-rename CAH22 sob
 rename CAH28 race
 rename CAH35 multiple
 rename CAH36 multiple_type
