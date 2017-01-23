@@ -18,12 +18,22 @@ gen ID = ER30001*1000 + ER30002
 
 // where did head and wife grow up
 rename ER57651 head_sob
+replace head_sob = . if head_sob == 99
+
 rename ER57654 head_s_grewup
+replace head_s_grewup = . if head_s_grewup == 99
+
 rename ER58219 head_r_grewup
+replace head_r_grewup = . if head_r_grewup == 99
 
 rename ER57541 wife_sob
+replace wife_sob = . if wife_sob == 99
+
 rename ER57544 wife_s_grewup
+replace wife_s_grewup = . if wife_s_grewup == 99
+
 rename ER58221 wife_r_grewup
+replace wife_r_grewup = . if wife_r_grewup == 99
 
 // where did head's and wife's parents grow up
 rename ER57509 wife_father_sob
@@ -39,10 +49,19 @@ rename ER57630 head_mother_grewup
 
 // education of head's and wife's parents
 rename ER57622 head_father_educ
+replace head_father_educ = . if head_father_educ == 0 | head_father_educ == 99
+
 rename ER57632 head_mother_educ
+replace head_mother_educ = . if head_mother_educ == 0 | head_mother_educ == 99
 
 rename ER57512 wife_father_educ
 rename ER57522 wife_mother_educ
+
+// parents poor?
+rename ER57656 parents_poor
+replace parents_poor = 2 if parents_poor == 3
+replace parents_poor = 3 if parents_poor == 5
+replace parents_poor = . if parents_poor == 9
 
 // houswork
 rename ER53674 wife_hw
@@ -63,7 +82,7 @@ rename ER54305 wife_in_fu
 
 
 
-keep ID wife_* head_*
+keep ID wife_* head_* parents_poor
 
 // save
 save "PSID_individual_clean.dta", replace
@@ -257,6 +276,9 @@ gen yob_mob = yob + mob/12
 	gen any_older_brother = (older_brothers > 0)
 	gen any_younger_brother = (younger_brothers > 0)
 	
+	// only sisters variable
+	gen girl_dominated = (brothers == 0) & sibs >=2 & older_sisters >= 1
+	
 // exact older sibling permutation dummies
 	gen sibling_permut = ""
 	replace sibling_permut = "no older sibs" if birth_order == 1
@@ -301,11 +323,6 @@ sort parent_ID birth_order
 keep if _merge == 3
 drop _merge
 
-// keep men
-keep if sex == 0
-
-// keep if wife currently in family unit
-keep if wife_in_fu == 1
 
 * CLEAN OUTCOMES *****************************************************************
 
@@ -313,6 +330,10 @@ keep if wife_in_fu == 1
 replace wife_income = 1 if wife_income == 0
 replace head_income = 1 if head_income == 0
 gen wife_frac_income = wife_income / (wife_income + head_income)
+
+// any income
+replace wife_any_income = . if wife_any_income == 9
+replace wife_any_income = 0 if wife_any_income == 5
 
 // education
 replace wife_educ = . if wife_educ == 99
