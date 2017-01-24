@@ -55,7 +55,6 @@ matrix col1[`nrows'-1, 1] = e(r2)
 matrix col1[`nrows', 1] = e(N)
 
 // COLUMN 2
-reg wife_frac_income next_sib##head_liberal_state i.older_sib_permut, vce(cluster parent_ID)
 
 // generate interaction 
 gen next_sib_liberal = next_sib * head_liberal_state
@@ -128,21 +127,339 @@ matrix col4[`nrows'-1, 1] = e(r2)
 matrix col4[`nrows', 1] = e(N)
 
 // COLUMN 5
-reg head_frac_hw next_sib##head_liberal_state i.older_sib_permut, vce(cluster parent_ID)
+
+// regress
+reg head_frac_hw next_sib head_liberal_state next_sib_liberal i.older_sib_permut, vce(cluster parent_ID)
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[next_sib]
+local ++row
+matrix col5[`row', 1] = _se[next_sib]
+local ++row
+matrix col5[`row', 1] = _b[head_liberal_state]
+local ++row
+matrix col5[`row', 1] = _se[head_liberal_state]
+local ++row
+matrix col5[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col5[`row', 1] = _se[next_sib_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
 
 
 // COLUMN 6
-reg head_frac_hw next_sib##c.hw_hat i.older_sib_permut, vce(cluster parent_ID)
+
+// generate interaction
+gen next_sib_hw_hat = next_sib * hw_hat
+
+// regress
+reg head_frac_hw next_sib hw_hat next_sib_hw_hat i.older_sib_permut, vce(cluster parent_ID)
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[next_sib]
+local ++row
+matrix col6[`row', 1] = _se[next_sib]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[hw_hat]
+local ++row
+matrix col6[`row', 1] = _se[hw_hat]
+local ++row
+matrix col6[`row', 1] = _b[next_sib_hw_hat]
+local ++row
+matrix col6[`row', 1] = _se[next_sib_hw_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix PSID_next_sib = col1, col2, col3, col4, col5, col6
+
+// save matrix
+preserve
+clear
+svmat PSID_next_sib
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(PSID_next_sib) sheetreplace
+restore
 
 * EFFECT OF ANY OLDER SISTER ***************************************************
 
-reg wife_frac_income any_older_sister i.sibs i.birth_order, vce(cluster parent_ID)
-reg wife_frac_income any_older_sister##head_liberal_state i.older_sib_permut, vce(cluster parent_ID)
-reg wife_frac_income any_older_sister##c.income_hat i.sibs i.birth_order, vce(cluster parent_ID)
+// table parameters
+local nrows = 12
 
+// COLUMN 1
+
+// regress
+reg wife_frac_income any_older_sister i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col1[`row', 1] = _se[any_older_sister]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
+
+// COLUMN 2
+
+// generate interaction 
+gen older_sister_liberal = any_older_sister * head_liberal_state
+
+// regress
+reg wife_frac_income any_older_sister head_liberal_state older_sister_liberal i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _b[head_liberal_state]
+local ++row
+matrix col2[`row', 1] = _se[head_liberal_state]
+local ++row
+matrix col2[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col2[`row', 1] = _se[older_sister_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen older_sister_income_hat = any_older_sister * income_hat
+
+// regress
+reg wife_frac_income any_older_sister income_hat older_sister_income_hat i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col3[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[income_hat]
+local ++row
+matrix col3[`row', 1] = _se[income_hat]
+local ++row
+matrix col3[`row', 1] = _b[older_sister_income_hat]
+local ++row
+matrix col3[`row', 1] = _se[older_sister_income_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
 reg head_frac_hw any_older_sister i.sibs i.birth_order, vce(cluster parent_ID)
-reg head_frac_hw any_older_sister##head_liberal_state i.sibs i.birth_order, vce(cluster parent_ID)
-reg head_frac_hw any_older_sister##c.hw_hat i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col4[`row', 1] = _se[any_older_sister]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg head_frac_hw any_older_sister head_liberal_state older_sister_liberal i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _b[head_liberal_state]
+local ++row
+matrix col5[`row', 1] = _se[head_liberal_state]
+local ++row
+matrix col5[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col5[`row', 1] = _se[older_sister_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen older_sister_hw_hat = any_older_sister * hw_hat
+
+// regress
+reg head_frac_hw any_older_sister hw_hat older_sister_hw_hat i.sibs i.birth_order, vce(cluster parent_ID)
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col6[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[hw_hat]
+local ++row
+matrix col6[`row', 1] = _se[hw_hat]
+local ++row
+matrix col6[`row', 1] = _b[older_sister_hw_hat]
+local ++row
+matrix col6[`row', 1] = _se[older_sister_hw_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix PSID_older_sister = col1, col2, col3, col4, col5, col6
+
+// save matrix
+preserve
+clear
+svmat PSID_older_sister
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(PSID_older_sister) sheetreplace
+restore
+
+* EFFECT OF OLDER SISTER, USING FAMILY FEs *************************************
+set matsize 2000
+
+// count families where there is variation in any older sister and # older sisters
+bys parent_ID: gen count = _N
+egen sum_any_older_sister = total(any_older_sister), by(parent_ID)
+gen var_in_any_older_sister = (sum_any_older_sister != 0 & sum_any_older_sister != count)
+
+egen min_older_sisters = min(older_sisters), by(parent_ID)
+egen max_older_sisters = max(older_sisters), by(parent_ID)
+gen var_in_older_sisters = (min_older_sisters != max_older_sisters)
+
+xtset parent_ID
+
+// table parameters
+local nrows = 5
+
+// COLUMN 1
+
+// regress
+reg wife_frac_income any_older_sister i.parent_ID if var_in_any_older_sister == 1, vce(cluster parent_ID)
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col1[`row', 1] = _se[any_older_sister] 
+local ++row
+matrix col1[`row', 1] = e(r2)
+local ++row
+matrix col1[`row', 1] = e(N_clust)
+local ++row
+matrix col1[`row', 1] = e(N)
+
+// COLUMN 2
+
+// regress
+xtreg wife_frac_income older_sisters if var_in_older_sisters == 1, fe vce(cluster parent_ID)
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[older_sisters]
+local ++row
+matrix col2[`row', 1] = _se[older_sisters] 
+local ++row
+matrix col2[`row', 1] = e(r2)
+local ++row
+matrix col2[`row', 1] = e(N_clust)
+local ++row
+matrix col2[`row', 1] = e(N)
+
+// COLUMN 3
+
+// regress
+xtreg head_frac_hw any_older_sister if var_in_any_older_sister == 1, fe vce(cluster parent_ID)
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col3[`row', 1] = _se[any_older_sister] 
+local ++row
+matrix col3[`row', 1] = e(r2)
+local ++row
+matrix col3[`row', 1] = e(N_clust)
+local ++row
+matrix col3[`row', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+xtreg head_frac_hw older_sisters if var_in_older_sisters == 1, fe vce(cluster parent_ID)
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[older_sisters]
+local ++row
+matrix col4[`row', 1] = _se[older_sisters] 
+local ++row
+matrix col4[`row', 1] = e(r2)
+local ++row
+matrix col4[`row', 1] = e(N_clust)
+local ++row
+matrix col4[`row', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix PSID_family_fes = col1, col2, col3, col4
+
+// save matrix
+preserve
+clear
+svmat PSID_family_fes
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(PSID_family_fes) sheetreplace
+restore
+
 
 
 
