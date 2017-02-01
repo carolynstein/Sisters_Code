@@ -28,10 +28,10 @@ gen head_liberal_state = (head_s_grewup == 50 | head_s_grewup == 25 | head_s_gre
 gen head_cons_state = (head_s_grewup == 28 | head_s_grewup == 1 | head_s_grewup == 22 | head_s_grewup == 5 | head_s_grewup == 47 | head_s_grewup == 45 | head_s_grewup == 49 | head_s_grewup == 56 | head_s_grewup == 16 | head_s_grewup == 40 )
 
 // create state-income cells, predict income and housework fractions
-reg wife_frac_income i.head_s_grewup##i.parents_poor, r
+reg wife_frac_income i.head_s_grewup#i.parents_poor, r
 predict income_hat
 
-reg head_frac_hw i.head_s_grewup##i.parents_poor, r
+reg head_frac_hw i.head_s_grewup#i.parents_poor, r
 predict hw_hat
 
 
@@ -204,7 +204,7 @@ local nrows = 12
 // COLUMN 1
 
 // regress
-reg wife_frac_income any_older_sister i.sibs i.birth_order, vce(cluster parent_ID)
+reg wife_frac_income any_older_sister i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col1 = J(`nrows', 1, 0)
@@ -221,7 +221,7 @@ matrix col1[`nrows', 1] = e(N)
 gen older_sister_liberal = any_older_sister * head_liberal_state
 
 // regress
-reg wife_frac_income any_older_sister head_liberal_state older_sister_liberal i.sibs i.birth_order, vce(cluster parent_ID)
+reg wife_frac_income any_older_sister head_liberal_state older_sister_liberal i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col2 = J(`nrows', 1, 0)
@@ -246,7 +246,7 @@ matrix col2[`nrows', 1] = e(N)
 gen older_sister_income_hat = any_older_sister * income_hat
 
 // regress
-reg wife_frac_income any_older_sister income_hat older_sister_income_hat i.sibs i.birth_order, vce(cluster parent_ID)
+reg wife_frac_income any_older_sister income_hat older_sister_income_hat i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col3 = J(`nrows', 1, 0)
@@ -276,7 +276,7 @@ matrix col3[`nrows', 1] = e(N)
 // COLUMN 4
 
 // regress
-reg head_frac_hw any_older_sister i.sibs i.birth_order, vce(cluster parent_ID)
+reg head_frac_hw any_older_sister i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col4 = J(`nrows', 1, 0)
@@ -290,7 +290,7 @@ matrix col4[`nrows', 1] = e(N)
 // COLUMN 5
 
 // regress
-reg head_frac_hw any_older_sister head_liberal_state older_sister_liberal i.sibs i.birth_order, vce(cluster parent_ID)
+reg head_frac_hw any_older_sister head_liberal_state older_sister_liberal i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col5 = J(`nrows', 1, 0)
@@ -316,7 +316,7 @@ matrix col5[`nrows', 1] = e(N)
 gen older_sister_hw_hat = any_older_sister * hw_hat
 
 // regress
-reg head_frac_hw any_older_sister hw_hat older_sister_hw_hat i.sibs i.birth_order, vce(cluster parent_ID)
+reg head_frac_hw any_older_sister hw_hat older_sister_hw_hat i.sibs#i.birth_order, vce(cluster parent_ID)
 
 // store
 matrix col6 = J(`nrows', 1, 0)
@@ -377,7 +377,7 @@ local nrows = 5
 // COLUMN 1
 
 // regress
-reg wife_frac_income any_older_sister i.parent_ID if var_in_any_older_sister == 1, vce(cluster parent_ID)
+reg wife_frac_income any_older_sister i.birth_order i.parent_ID if var_in_any_older_sister == 1, vce(cluster parent_ID)
 
 // store
 matrix col1 = J(`nrows', 1, 0)
@@ -395,7 +395,7 @@ matrix col1[`row', 1] = e(N)
 // COLUMN 2
 
 // regress
-xtreg wife_frac_income older_sisters if var_in_older_sisters == 1, fe vce(cluster parent_ID)
+reg wife_frac_income older_sisters i.birth_order i.parent_ID if var_in_older_sisters == 1, vce(cluster parent_ID)
 
 // store
 matrix col2 = J(`nrows', 1, 0)
@@ -413,7 +413,7 @@ matrix col2[`row', 1] = e(N)
 // COLUMN 3
 
 // regress
-xtreg head_frac_hw any_older_sister if var_in_any_older_sister == 1, fe vce(cluster parent_ID)
+reg head_frac_hw any_older_sister i.birth_order i.parent_ID if var_in_any_older_sister == 1, vce(cluster parent_ID)
 
 // store
 matrix col3 = J(`nrows', 1, 0)
@@ -431,7 +431,7 @@ matrix col3[`row', 1] = e(N)
 // COLUMN 4
 
 // regress
-xtreg head_frac_hw older_sisters if var_in_older_sisters == 1, fe vce(cluster parent_ID)
+reg head_frac_hw older_sisters i.birth_order i.parent_ID if var_in_older_sisters == 1, vce(cluster parent_ID)
 
 // store
 matrix col4 = J(`nrows', 1, 0)
@@ -459,6 +459,7 @@ svmat PSID_family_fes
 // export file
 export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(PSID_family_fes) sheetreplace
 restore
+
 
 
 

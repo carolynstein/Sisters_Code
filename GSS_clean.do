@@ -188,13 +188,28 @@ gen progressive = (reg16 == 1 | reg16 == 2 | reg16 == 9) & cohort >= 1960
 // code work full-time as 2, part-time as 1, not work as 0
 rename spwrksta spwrksta1
 gen spwrksta = .
-replace spwrksta = 2 if spwrksta1 == 1
-replace spwrksta = 1 if spwrksta1 == 2
-replace spwrksta = 0 if spwrksta1 >=3 & marital == 1
-drop spwrksta1
+replace spwrksta = 2 if spwrksta1 == 1 | spwrksta1 == 3 & sphrs2 >= 20
+replace spwrksta = 1 if spwrksta1 == 2 | spwrksta1 == 3 & sphrs2 < 20
+replace spwrksta = 0 if spwrksta1 > 3 & marital == 1
 
-// code wives who don't work as 0 hours, not IAP
-replace sphrs1 = 0 if sphrs1 == .i & marital == 1
+// code wives who didn't work that week with their usual hours
+gen sphrs = .
+replace sphrs = sphrs1 if spwrksta1 == 1 | spwrksta1 == 2
+replace sphrs = sphrs2 if spwrksta1 == 3 
+
+// code wives who list IAP as 0 hours
+replace sphrs = 0.1 if sphrs1 == .i & sphrs2 == .i & marital == 1
+
+// code husband hours
+gen hrs = .
+replace hrs = hrs1 if wrkstat == 1 | wrkstat == 2
+replace hrs = hrs2 if wrkstat == 3
+
+// code husbands who list IAP as 0 hours
+replace hrs = 0.1 if hrs1 == .i & hrs2 == .i & marital == 1
+
+// create ratio of hours 
+gen sp_frac_hrs = sphrs / (sphrs + hrs)
 
 // generate a spouse income variable
 gen spinc = .
@@ -202,8 +217,17 @@ replace spinc = 1 - rincome/income if marital == 1
 
 * CLEAN UP HOUSEHOLD OUTCOMES **************************************************
 
+// code laundry as missing if not coded 1-5
+replace laundry = . if laundry == 6 | laundry == 7 | laundry == .i | laundry == .n
+
+// code shop food as missing if not married
+replace shopfood = . if shopfood == 6 | shopfood == 7 | shopfood == .i | shopfood == .n
+
+// code dinner as missing if not married
+replace dinner = . if dinner == 6 | dinner == 7 | dinner == .i | dinner == .n 
+
 // code repairs as missing if done by outside person
-replace repairs = . if repairs == 6
+replace repairs = . if repairs == 6 | repairs == 7 | repairs == .i | repairs == .n
 
 
 * CLEAN UP ATTITUTE OUTCOMES ***************************************************
@@ -213,14 +237,16 @@ replace repairs = . if repairs == 6
 // should women work - 0 = disapprove, 1 = approve
 rename fework fework1
 gen fework = .
-replace fework = 0 if fework1 == 2
-replace fework = 1 if fework1 == 1
+replace fework = 1 if fework1 == 2
+replace fework = 2 if fework1 == .n
+replace fework = 3 if fework1 == 1
 
 // women not suited for politics - 0 = agree, 1 = disagree
 rename fepol fepol1
 gen fepol = .
-replace fepol = 0 if fepol1 == 1
 replace fepol = 1 if fepol1 == 2
+replace fepol = 2 if fepol1 == .n
+replace fepol = 3 if fepol1 == 1
 
 // vote for a woman president - 0 = no, 1 = yes
 rename fepres fepres1

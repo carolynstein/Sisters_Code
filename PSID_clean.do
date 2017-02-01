@@ -80,8 +80,6 @@ rename ER58224 wife_educ
 // wife in family unit?
 rename ER54305 wife_in_fu
 
-
-
 keep ID wife_* head_* parents_poor
 
 // save

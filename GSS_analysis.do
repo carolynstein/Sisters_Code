@@ -12,296 +12,1559 @@ use "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Data/GSS/GSS_clean.dta"
 
 * SAMPLE RESTRICTIONS **********************************************************
 
-* SAMPLE: men who grew up in a family with one sister (either older or younger)
-
 // men
 keep if sex == 1
 
 // 1 sibling
-keep if sibs == 1
+keep if sibs >= 1
 
-* SUMMARY STATISTICS ***********************************************************
+* CREATE VARIABLES *************************************************************
 
-// list the variables I want to summarize
-local sum_stats age black white other new_engl mid_atl e_nor_cent w_nor_cent sou_atl e_sou_central w_sou_central mtn pacific educ working_ft working_pt not_working married div_sep never_marr
+// grew up in liberal or conservative state (based on current Gallup poll)
+gen liberal_region = (reg16 == 1 | reg16 == 2 | reg16 == 9)
+gen cons_region = (reg16 == 6 | reg16 == 7 | reg16 == 8)
 
-// samples
-gen all = 1
-local samples all older_sibling sister older_sister
+// create state-income cells, predict outcomes of interest
 
-// table layout parameters
-local n_cols = 5
-local n_rows = 2
+replace incom16 = 6 if incom16 == .a | incom16 == .i
 
-// initialize blank matrix
-matrix sum_stats = J(`n_rows', `n_cols', 0)
+reg spwrksta i.reg16#incom16, r
+predict spwrksta_hat
 
-// loop over covariates, which vary with rows
-foreach var of local sum_stats {
+reg sp_frac_hrs i.reg16#incom16, r
+predict hrs_hat
 
-	// initialize blank row
-	matrix row = J(`n_rows', `n_cols', 0)
-	
-	// loop over samples, which vary with columns
-	local col = 1
-	foreach s of local samples {
-	
-		// store control mean and sample size
-		sum `var' if `s' 
-		matrix row[1, `col'] = r(mean)
-		matrix row[2, `col'] = r(sd)
-		
-		// increment column
-		local ++col
+reg laundry i.reg16#incom16, r
+predict laundry_hat
 
-	} // end of sample loop (completes a row)
-	
-	// append row to base matrix
-	matrix sum_stats = sum_stats \ row
-}
+reg shopfood i.reg16#incom16, r
+predict shopfood_hat
 
-// add sample counts to bottow row
-matrix N = J(1, `n_cols', 0)
+reg dinner i.reg16#incom16, r
+predict dinner_hat
 
-// loop over samples
-local col = 1
-foreach s of local samples {
-	count if `s'
-	matrix N[1, `col'] = r(N)
-	local ++col
-}
+reg repairs i.reg16#incom16, r
+predict repairs_hat
 
-matrix sum_stats = sum_stats \ N
+reg fework i.reg16#incom16, r
+predict fework_hat
 
-// save matrix
-preserve
-clear
-svmat sum_stats
+reg fepol i.reg16#incom16, r
+predict fepol_hat
 
-// label rows
-drop if _n == 1
-gen stat = ""
-order stat
+reg hubbywk1 i.reg16#incom16, r
+predict hubbywk1_hat
+
+reg mrmom i.reg16#incom16, r
+predict mrmom_hat
+
+
+* EFFECT OF NEXT SIBLING on WIFE WORK ******************************************
+
+// table parameters
+local nrows = 12
+
+// COLUMN 1
+
+// regress
+reg spwrksta next_sib i.older_sib_permut, robust
+
+// store
+matrix col1 = J(`nrows', 1, 0)
 local row = 1
-foreach var of local sum_stats {
-	replace stat = "`var'" if (_n == `row')
-	local row = `row' + 2
-}
+matrix col1[`row', 1] = _b[next_sib]
+local ++row
+matrix col1[`row', 1] = _se[next_sib]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
 
-// label cols
-rename sum_stats1 full_sample
-rename sum_stats2 sisters
-rename sum_stats3 older_sisters
+// COLUMN 2
 
-// export file
-export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_summary_stats) sheetreplace
-restore
+// generate interaction 
+gen next_sib_liberal = next_sib * liberal_region
+
+// regress
+reg spwrksta next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[next_sib]
+local ++row
+matrix col2[`row', 1] = _se[next_sib]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col2[`row', 1] = _se[next_sib_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen next_sib_spwrksta_hat = next_sib * spwrksta_hat
+
+// regress
+reg spwrksta next_sib spwrksta_hat next_sib_spwrksta_hat i.older_sib_permut, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[next_sib]
+local ++row
+matrix col3[`row', 1] = _se[next_sib]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _se[spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _b[next_sib_spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _se[next_sib_spwrksta_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg sp_frac_hrs next_sib i.older_sib_permut, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[next_sib]
+local ++row
+matrix col4[`row', 1] = _se[next_sib]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg sp_frac_hrs next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[next_sib]
+local ++row
+matrix col5[`row', 1] = _se[next_sib]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col5[`row', 1] = _se[next_sib_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
 
 
-* SPOUSE WORK & EDUCATION REGRESSIONS ******************************************
+// COLUMN 6
 
-// outcomes
-local spouse_outcomes spwrksta sphrs1 speduc spdeg
+// generate interaction
+gen next_sib_hrs_hat = next_sib * hrs_hat
 
-// covariates
-local covs age age2 i.race i.reg16 educ
+// regress
+reg sp_frac_hrs next_sib hrs_hat next_sib_hrs_hat i.older_sib_permut, robust
 
-// table layout parameters
-local n_rows = 12
-local n_cols = 1
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[next_sib]
+local ++row
+matrix col6[`row', 1] = _se[next_sib]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[hrs_hat]
+local ++row
+matrix col6[`row', 1] = _se[hrs_hat]
+local ++row
+matrix col6[`row', 1] = _b[next_sib_hrs_hat]
+local ++row
+matrix col6[`row', 1] = _se[next_sib_hrs_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
 
-// initialize results matrix
-matrix spouse_outcomes = J(`n_rows', `n_cols', 0)
+// MAKE TABLE and SAVE
 
-// loop over outcomes
-foreach y of local spouse_outcomes {
-
-	// initialize a blank column
-	matrix col = J(`n_rows', `n_cols', 0)
-	local row = 1
-	
-	// older brother vs. older sister regression
-	reg `y' older_sister `covs' if birth_order == 2, robust
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger brother vs. younger sister regression
-	reg `y' younger_sister `covs' if birth_order == 1, robust
-	matrix col[`row', 1] = _b[younger_sister]
-	local ++row
-	matrix col[`row', 1] = _se[younger_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger sister vs. older sister regression
-	reg `y' older_sister `covs' if sister == 1, robust
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// append column
-	matrix spouse_outcomes = spouse_outcomes, col
-}
-
-// save matrix
-preserve
-clear
-svmat spouse_outcomes
-
-// export file
-export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_spouse_outcomes) sheetreplace
-restore
-
-
-* HOUSEHOLD DUTIES REGRESSIONS *************************************************
-
-// outcomes
-local hh_outcomes laundry dinner shopfood repairs
-
-// covariates
-local covs age age2 i.race i.reg16 educ
-
-// table layout parameters
-local n_rows = 12
-local n_cols = 1
-
-// initialize results matrix
-matrix hh_outcomes = J(`n_rows', `n_cols', 0)
-
-// loop over outcomes
-foreach y of local hh_outcomes {
-
-	// initialize a blank column
-	matrix col = J(`n_rows', `n_cols', 0)
-	local row = 1
-	
-	// older brother vs. older sister regression
-	reg `y' older_sister `covs' if birth_order == 2 & `y' != 7, robust // drop unmarried
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger brother vs. younger sister regression
-	reg `y' younger_sister `covs' if birth_order == 1 & `y' != 7, robust
-	matrix col[`row', 1] = _b[younger_sister]
-	local ++row
-	matrix col[`row', 1] = _se[younger_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger sister vs. older sister regression
-	reg `y' older_sister `covs' if sister == 1 & `y' != 7, robust
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// append column
-	matrix hh_outcomes = hh_outcomes, col
-}
+// append columns
+matrix GSS_next_sib1 = col1, col2, col3, col4, col5, col6
 
 // save matrix
 preserve
 clear
-svmat hh_outcomes
+svmat GSS_next_sib1
 
 // export file
-export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_hh_outcomes) sheetreplace
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_next_sib1) sheetreplace
 restore
 
+* EFFECT OF NEXT SIBLING on HOUSEHOLD DUTIES ******************************************
 
-* ATTITUDES TOWARD WOMEN REGRESSIONS *******************************************
+// table parameters
+local nrows = 12
 
-// outcomes 
-local att_outcomes fework fepol fepres fehelp hubbywk1 mrmom famsuffr twoincs
+// COLUMN 1
 
-// covariates
-local covs age age2 i.race i.reg16 educ i.marital
+// regress
+reg laundry next_sib i.older_sib_permut, robust
 
-// table layout parameters
-local n_rows = 12
-local n_cols = 1
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[next_sib]
+local ++row
+matrix col1[`row', 1] = _se[next_sib]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
 
-// initialize results matrix
-matrix att_outcomes = J(`n_rows', `n_cols', 0)
+// COLUMN 2
 
-// loop over outcomes
-foreach y of local att_outcomes {
+// regress
+reg laundry next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
 
-	// initialize a blank column
-	matrix col = J(`n_rows', `n_cols', 0)
-	local row = 1
-	
-	// older brother vs. older sister regression
-	reg `y' older_sister `covs' if birth_order == 2, robust
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger brother vs. younger sister regression
-	reg `y' younger_sister `covs' if birth_order == 1, robust
-	matrix col[`row', 1] = _b[younger_sister]
-	local ++row
-	matrix col[`row', 1] = _se[younger_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// younger sister vs. older sister regression
-	reg `y' older_sister `covs' if sister == 1, robust
-	matrix col[`row', 1] = _b[older_sister]
-	local ++row
-	matrix col[`row', 1] = _se[older_sister]
-	local ++row
-	matrix col[`row', 1] = e(r2)
-	local ++row
-	matrix col[`row', 1] = e(N)
-	local ++row
-	
-	// append column
-	matrix att_outcomes = att_outcomes, col
-}
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[next_sib]
+local ++row
+matrix col2[`row', 1] = _se[next_sib]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col2[`row', 1] = _se[next_sib_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen next_sib_laundry_hat = next_sib * laundry_hat
+
+// regress
+reg laundry next_sib laundry_hat next_sib_laundry_hat i.older_sib_permut, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[next_sib]
+local ++row
+matrix col3[`row', 1] = _se[next_sib]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[laundry_hat]
+local ++row
+matrix col3[`row', 1] = _se[laundry_hat]
+local ++row
+matrix col3[`row', 1] = _b[next_sib_laundry_hat]
+local ++row
+matrix col3[`row', 1] = _se[next_sib_laundry_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg shopfood next_sib i.older_sib_permut, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[next_sib]
+local ++row
+matrix col4[`row', 1] = _se[next_sib]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg shopfood next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[next_sib]
+local ++row
+matrix col5[`row', 1] = _se[next_sib]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col5[`row', 1] = _se[next_sib_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen next_sib_shopfood_hat = next_sib * shopfood_hat
+
+// regress
+reg shopfood next_sib shopfood_hat next_sib_shopfood_hat i.older_sib_permut, robust
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[next_sib]
+local ++row
+matrix col6[`row', 1] = _se[next_sib]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _se[shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _b[next_sib_shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _se[next_sib_shopfood_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// COLUMN 7
+
+// regress
+reg dinner next_sib i.older_sib_permut, robust
+
+// store
+matrix col7 = J(`nrows', 1, 0)
+local row = 1
+matrix col7[`row', 1] = _b[next_sib]
+local ++row
+matrix col7[`row', 1] = _se[next_sib]
+matrix col7[`nrows'-1, 1] = e(r2)
+matrix col7[`nrows', 1] = e(N)
+
+// COLUMN 8
+
+// regress
+reg dinner next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col8 = J(`nrows', 1, 0)
+local row = 1
+matrix col8[`row', 1] = _b[next_sib]
+local ++row
+matrix col8[`row', 1] = _se[next_sib]
+local ++row
+matrix col8[`row', 1] = _b[liberal_region]
+local ++row
+matrix col8[`row', 1] = _se[liberal_region]
+local ++row
+matrix col8[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col8[`row', 1] = _se[next_sib_liberal]
+matrix col8[`nrows'-1, 1] = e(r2)
+matrix col8[`nrows', 1] = e(N)
+
+// COLUMN 9
+
+// generate interaction
+gen next_sib_dinner_hat = next_sib * dinner_hat
+
+// regress
+reg dinner next_sib dinner_hat next_sib_dinner_hat i.older_sib_permut, robust
+
+// store
+matrix col9 = J(`nrows', 1, 0)
+local row = 1
+matrix col9[`row', 1] = _b[next_sib]
+local ++row
+matrix col9[`row', 1] = _se[next_sib]
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = _b[dinner_hat]
+local ++row
+matrix col9[`row', 1] = _se[dinner_hat]
+local ++row
+matrix col9[`row', 1] = _b[next_sib_dinner_hat]
+local ++row
+matrix col9[`row', 1] = _se[next_sib_dinner_hat]
+matrix col9[`nrows'-1, 1] = e(r2)
+matrix col9[`nrows', 1] = e(N)
+
+// COLUMN 10
+
+// regress
+reg repairs next_sib i.older_sib_permut, robust
+
+// store
+matrix col10 = J(`nrows', 1, 0)
+local row = 1
+matrix col10[`row', 1] = _b[next_sib]
+local ++row
+matrix col10[`row', 1] = _se[next_sib]
+matrix col10[`nrows'-1, 1] = e(r2)
+matrix col10[`nrows', 1] = e(N)
+
+// COLUMN 11
+
+// regress
+reg repairs next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col11 = J(`nrows', 1, 0)
+local row = 1
+matrix col11[`row', 1] = _b[next_sib]
+local ++row
+matrix col11[`row', 1] = _se[next_sib]
+local ++row
+matrix col11[`row', 1] = _b[liberal_region]
+local ++row
+matrix col11[`row', 1] = _se[liberal_region]
+local ++row
+matrix col11[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col11[`row', 1] = _se[next_sib_liberal]
+matrix col11[`nrows'-1, 1] = e(r2)
+matrix col11[`nrows', 1] = e(N)
+
+// COLUMN 12
+
+// generate interaction
+gen next_sib_repairs_hat = next_sib * repairs_hat
+
+// regress
+reg repairs next_sib repairs_hat next_sib_repairs_hat i.older_sib_permut, robust
+
+// store
+matrix col12 = J(`nrows', 1, 0)
+local row = 1
+matrix col12[`row', 1] = _b[next_sib]
+local ++row
+matrix col12[`row', 1] = _se[next_sib]
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = _b[repairs_hat]
+local ++row
+matrix col12[`row', 1] = _se[repairs_hat]
+local ++row
+matrix col12[`row', 1] = _b[next_sib_repairs_hat]
+local ++row
+matrix col12[`row', 1] = _se[next_sib_repairs_hat]
+matrix col12[`nrows'-1, 1] = e(r2)
+matrix col12[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix GSS_next_sib2 = col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12
 
 // save matrix
 preserve
 clear
-svmat att_outcomes
+svmat GSS_next_sib2
 
 // export file
-export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_att_outcomes) sheetreplace
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_next_sib2) sheetreplace
 restore
 
+
+* EFFECT OF NEXT SIBLING on ATTITUDES ******************************************
+
+// table parameters
+local nrows = 12
+
+// COLUMN 1
+
+// regress
+reg fework next_sib i.older_sib_permut, robust
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[next_sib]
+local ++row
+matrix col1[`row', 1] = _se[next_sib]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
+
+// COLUMN 2
+
+// regress
+reg fework next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[next_sib]
+local ++row
+matrix col2[`row', 1] = _se[next_sib]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col2[`row', 1] = _se[next_sib_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen next_sib_fework_hat = next_sib * fework_hat
+
+// regress
+reg fework next_sib fework_hat next_sib_fework_hat i.older_sib_permut, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[next_sib]
+local ++row
+matrix col3[`row', 1] = _se[next_sib]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[fework_hat]
+local ++row
+matrix col3[`row', 1] = _se[fework_hat]
+local ++row
+matrix col3[`row', 1] = _b[next_sib_fework_hat]
+local ++row
+matrix col3[`row', 1] = _se[next_sib_fework_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg fepol next_sib i.older_sib_permut, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[next_sib]
+local ++row
+matrix col4[`row', 1] = _se[next_sib]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg fepol next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[next_sib]
+local ++row
+matrix col5[`row', 1] = _se[next_sib]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col5[`row', 1] = _se[next_sib_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen next_sib_fepol_hat = next_sib * fepol_hat
+
+// regress
+reg fepol next_sib fepol_hat next_sib_fepol_hat i.older_sib_permut, robust
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[next_sib]
+local ++row
+matrix col6[`row', 1] = _se[next_sib]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[fepol_hat]
+local ++row
+matrix col6[`row', 1] = _se[fepol_hat]
+local ++row
+matrix col6[`row', 1] = _b[next_sib_fepol_hat]
+local ++row
+matrix col6[`row', 1] = _se[next_sib_fepol_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// COLUMN 7
+
+// regress
+reg hubbywk1 next_sib i.older_sib_permut, robust
+
+// store
+matrix col7 = J(`nrows', 1, 0)
+local row = 1
+matrix col7[`row', 1] = _b[next_sib]
+local ++row
+matrix col7[`row', 1] = _se[next_sib]
+matrix col7[`nrows'-1, 1] = e(r2)
+matrix col7[`nrows', 1] = e(N)
+
+// COLUMN 8
+
+// regress
+reg hubbywk1 next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col8 = J(`nrows', 1, 0)
+local row = 1
+matrix col8[`row', 1] = _b[next_sib]
+local ++row
+matrix col8[`row', 1] = _se[next_sib]
+local ++row
+matrix col8[`row', 1] = _b[liberal_region]
+local ++row
+matrix col8[`row', 1] = _se[liberal_region]
+local ++row
+matrix col8[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col8[`row', 1] = _se[next_sib_liberal]
+matrix col8[`nrows'-1, 1] = e(r2)
+matrix col8[`nrows', 1] = e(N)
+
+// COLUMN 9
+
+// generate interaction
+gen next_sib_hubbywk1_hat = next_sib * hubbywk1_hat
+
+// regress
+reg dinner next_sib hubbywk1_hat next_sib_hubbywk1_hat i.older_sib_permut, robust
+
+// store
+matrix col9 = J(`nrows', 1, 0)
+local row = 1
+matrix col9[`row', 1] = _b[next_sib]
+local ++row
+matrix col9[`row', 1] = _se[next_sib]
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = _b[hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _se[hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _b[next_sib_hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _se[next_sib_hubbywk1_hat]
+matrix col9[`nrows'-1, 1] = e(r2)
+matrix col9[`nrows', 1] = e(N)
+
+// COLUMN 10
+
+// regress
+reg mrmom next_sib i.older_sib_permut, robust
+
+// store
+matrix col10 = J(`nrows', 1, 0)
+local row = 1
+matrix col10[`row', 1] = _b[next_sib]
+local ++row
+matrix col10[`row', 1] = _se[next_sib]
+matrix col10[`nrows'-1, 1] = e(r2)
+matrix col10[`nrows', 1] = e(N)
+
+// COLUMN 11
+
+// regress
+reg mrmom next_sib liberal_region next_sib_liberal i.older_sib_permut, robust
+
+// store
+matrix col11 = J(`nrows', 1, 0)
+local row = 1
+matrix col11[`row', 1] = _b[next_sib]
+local ++row
+matrix col11[`row', 1] = _se[next_sib]
+local ++row
+matrix col11[`row', 1] = _b[liberal_region]
+local ++row
+matrix col11[`row', 1] = _se[liberal_region]
+local ++row
+matrix col11[`row', 1] = _b[next_sib_liberal]
+local ++row
+matrix col11[`row', 1] = _se[next_sib_liberal]
+matrix col11[`nrows'-1, 1] = e(r2)
+matrix col11[`nrows', 1] = e(N)
+
+// COLUMN 12
+
+// generate interaction
+gen next_sib_mrmom_hat = next_sib * mrmom_hat
+
+// regress
+reg mrmom next_sib mrmom_hat next_sib_mrmom_hat i.older_sib_permut, robust
+
+// store
+matrix col12 = J(`nrows', 1, 0)
+local row = 1
+matrix col12[`row', 1] = _b[next_sib]
+local ++row
+matrix col12[`row', 1] = _se[next_sib]
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = _b[mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _se[mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _b[next_sib_mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _se[next_sib_mrmom_hat]
+matrix col12[`nrows'-1, 1] = e(r2)
+matrix col12[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix GSS_next_sib3 = col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12
+
+// save matrix
+preserve
+clear
+svmat GSS_next_sib3
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_next_sib3) sheetreplace
+restore
+
+* EFFECT OF OLDER SISTER on WIFE WORK ******************************************
+
+// table parameters
+local nrows = 12
+
+// COLUMN 1
+
+// regress
+reg spwrksta any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col1[`row', 1] = _se[any_older_sister]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
+
+// COLUMN 2
+
+// generate interaction 
+gen older_sister_liberal = any_older_sister * liberal_region
+
+// regress
+reg spwrksta any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col2[`row', 1] = _se[older_sister_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen older_sister_spwrksta_hat = any_older_sister * spwrksta_hat
+
+// regress
+reg spwrksta any_older_sister spwrksta_hat older_sister_spwrksta_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col3[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _se[spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _b[older_sister_spwrksta_hat]
+local ++row
+matrix col3[`row', 1] = _se[older_sister_spwrksta_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg sp_frac_hrs any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col4[`row', 1] = _se[any_older_sister]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg sp_frac_hrs any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col5[`row', 1] = _se[older_sister_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen older_sister_hrs_hat = any_older_sister * hrs_hat
+
+// regress
+reg sp_frac_hrs any_older_sister hrs_hat older_sister_hrs_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col6[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[hrs_hat]
+local ++row
+matrix col6[`row', 1] = _se[hrs_hat]
+local ++row
+matrix col6[`row', 1] = _b[older_sister_hrs_hat]
+local ++row
+matrix col6[`row', 1] = _se[older_sister_hrs_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix GSS_older_sister1 = col1, col2, col3, col4, col5, col6
+
+// save matrix
+preserve
+clear
+svmat GSS_older_sister1
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_older_sister1) sheetreplace
+restore
+
+
+* EFFECT OF OLDER SISTER on HOUSEHOLD DUTIES ******************************************
+
+// table parameters
+local nrows = 12
+
+// COLUMN 1
+
+// regress
+reg laundry any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col1[`row', 1] = _se[any_older_sister]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
+
+// COLUMN 2
+
+// regress
+reg laundry any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col2[`row', 1] = _se[older_sister_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen older_sister_laundry_hat = any_older_sister * laundry_hat
+
+// regress
+reg laundry any_older_sister laundry_hat older_sister_laundry_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col3[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[laundry_hat]
+local ++row
+matrix col3[`row', 1] = _se[laundry_hat]
+local ++row
+matrix col3[`row', 1] = _b[older_sister_laundry_hat]
+local ++row
+matrix col3[`row', 1] = _se[older_sister_laundry_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg shopfood any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col4[`row', 1] = _se[any_older_sister]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg shopfood any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col5[`row', 1] = _se[older_sister_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen older_sister_shopfood_hat = any_older_sister * shopfood_hat
+
+// regress
+reg shopfood any_older_sister shopfood_hat older_sister_shopfood_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col6[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _se[shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _b[older_sister_shopfood_hat]
+local ++row
+matrix col6[`row', 1] = _se[older_sister_shopfood_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// COLUMN 7
+
+// regress
+reg dinner any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col7 = J(`nrows', 1, 0)
+local row = 1
+matrix col7[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col7[`row', 1] = _se[any_older_sister]
+matrix col7[`nrows'-1, 1] = e(r2)
+matrix col7[`nrows', 1] = e(N)
+
+// COLUMN 8
+
+// regress
+reg dinner any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col8 = J(`nrows', 1, 0)
+local row = 1
+matrix col8[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col8[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col8[`row', 1] = _b[liberal_region]
+local ++row
+matrix col8[`row', 1] = _se[liberal_region]
+local ++row
+matrix col8[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col8[`row', 1] = _se[older_sister_liberal]
+matrix col8[`nrows'-1, 1] = e(r2)
+matrix col8[`nrows', 1] = e(N)
+
+// COLUMN 9
+
+// generate interaction
+gen older_sister_dinner_hat = any_older_sister * dinner_hat
+
+// regress
+reg dinner any_older_sister dinner_hat older_sister_dinner_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col9 = J(`nrows', 1, 0)
+local row = 1
+matrix col9[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col9[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = _b[dinner_hat]
+local ++row
+matrix col9[`row', 1] = _se[dinner_hat]
+local ++row
+matrix col9[`row', 1] = _b[older_sister_dinner_hat]
+local ++row
+matrix col9[`row', 1] = _se[older_sister_dinner_hat]
+matrix col9[`nrows'-1, 1] = e(r2)
+matrix col9[`nrows', 1] = e(N)
+
+// COLUMN 10
+
+// regress
+reg repairs any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col10 = J(`nrows', 1, 0)
+local row = 1
+matrix col10[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col10[`row', 1] = _se[any_older_sister]
+matrix col10[`nrows'-1, 1] = e(r2)
+matrix col10[`nrows', 1] = e(N)
+
+// COLUMN 11
+
+// regress
+reg repairs any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col11 = J(`nrows', 1, 0)
+local row = 1
+matrix col11[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col11[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col11[`row', 1] = _b[liberal_region]
+local ++row
+matrix col11[`row', 1] = _se[liberal_region]
+local ++row
+matrix col11[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col11[`row', 1] = _se[older_sister_liberal]
+matrix col11[`nrows'-1, 1] = e(r2)
+matrix col11[`nrows', 1] = e(N)
+
+// COLUMN 12
+
+// generate interaction
+gen older_sister_repairs_hat = any_older_sister * repairs_hat
+
+// regress
+reg repairs any_older_sister repairs_hat older_sister_repairs_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col12 = J(`nrows', 1, 0)
+local row = 1
+matrix col12[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col12[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = _b[repairs_hat]
+local ++row
+matrix col12[`row', 1] = _se[repairs_hat]
+local ++row
+matrix col12[`row', 1] = _b[older_sister_repairs_hat]
+local ++row
+matrix col12[`row', 1] = _se[older_sister_repairs_hat]
+matrix col12[`nrows'-1, 1] = e(r2)
+matrix col12[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix GSS_older_sister2 = col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12
+
+// save matrix
+preserve
+clear
+svmat GSS_older_sister2
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_older_sister2) sheetreplace
+restore
+
+
+* EFFECT OF OLDER SISTER on ATTITUDES ******************************************
+
+// table parameters
+local nrows = 12
+
+// COLUMN 1
+
+// regress
+reg fework any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col1 = J(`nrows', 1, 0)
+local row = 1
+matrix col1[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col1[`row', 1] = _se[any_older_sister]
+matrix col1[`nrows'-1, 1] = e(r2)
+matrix col1[`nrows', 1] = e(N)
+
+// COLUMN 2
+
+// regress
+reg fework any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col2 = J(`nrows', 1, 0)
+local row = 1
+matrix col2[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col2[`row', 1] = _b[liberal_region]
+local ++row
+matrix col2[`row', 1] = _se[liberal_region]
+local ++row
+matrix col2[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col2[`row', 1] = _se[older_sister_liberal]
+matrix col2[`nrows'-1, 1] = e(r2)
+matrix col2[`nrows', 1] = e(N)
+
+// COLUMN 3
+
+// generate interaction
+gen older_sister_fework_hat = any_older_sister * fework_hat
+
+// regress
+reg fework any_older_sister fework_hat older_sister_fework_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col3 = J(`nrows', 1, 0)
+local row = 1
+matrix col3[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col3[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = 0
+local ++row
+matrix col3[`row', 1] = _b[fework_hat]
+local ++row
+matrix col3[`row', 1] = _se[fework_hat]
+local ++row
+matrix col3[`row', 1] = _b[older_sister_fework_hat]
+local ++row
+matrix col3[`row', 1] = _se[older_sister_fework_hat]
+matrix col3[`nrows'-1, 1] = e(r2)
+matrix col3[`nrows', 1] = e(N)
+
+// COLUMN 4
+
+// regress
+reg fepol any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col4 = J(`nrows', 1, 0)
+local row = 1
+matrix col4[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col4[`row', 1] = _se[any_older_sister]
+matrix col4[`nrows'-1, 1] = e(r2)
+matrix col4[`nrows', 1] = e(N)
+
+// COLUMN 5
+
+// regress
+reg fepol any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col5 = J(`nrows', 1, 0)
+local row = 1
+matrix col5[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col5[`row', 1] = _b[liberal_region]
+local ++row
+matrix col5[`row', 1] = _se[liberal_region]
+local ++row
+matrix col5[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col5[`row', 1] = _se[older_sister_liberal]
+matrix col5[`nrows'-1, 1] = e(r2)
+matrix col5[`nrows', 1] = e(N)
+
+
+// COLUMN 6
+
+// generate interaction
+gen older_sister_fepol_hat = any_older_sister * fepol_hat
+
+// regress
+reg fepol any_older_sister fepol_hat older_sister_fepol_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col6 = J(`nrows', 1, 0)
+local row = 1
+matrix col6[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col6[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = 0
+local ++row
+matrix col6[`row', 1] = _b[fepol_hat]
+local ++row
+matrix col6[`row', 1] = _se[fepol_hat]
+local ++row
+matrix col6[`row', 1] = _b[older_sister_fepol_hat]
+local ++row
+matrix col6[`row', 1] = _se[older_sister_fepol_hat]
+matrix col6[`nrows'-1, 1] = e(r2)
+matrix col6[`nrows', 1] = e(N)
+
+// COLUMN 7
+
+// regress
+reg hubbywk1 any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col7 = J(`nrows', 1, 0)
+local row = 1
+matrix col7[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col7[`row', 1] = _se[any_older_sister]
+matrix col7[`nrows'-1, 1] = e(r2)
+matrix col7[`nrows', 1] = e(N)
+
+// COLUMN 8
+
+// regress
+reg hubbywk1 any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col8 = J(`nrows', 1, 0)
+local row = 1
+matrix col8[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col8[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col8[`row', 1] = _b[liberal_region]
+local ++row
+matrix col8[`row', 1] = _se[liberal_region]
+local ++row
+matrix col8[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col8[`row', 1] = _se[older_sister_liberal]
+matrix col8[`nrows'-1, 1] = e(r2)
+matrix col8[`nrows', 1] = e(N)
+
+// COLUMN 9
+
+// generate interaction
+gen older_sister_hubbywk1_hat = any_older_sister * hubbywk1_hat
+
+// regress
+reg hubbywk1 any_older_sister hubbywk1_hat older_sister_hubbywk1_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col9 = J(`nrows', 1, 0)
+local row = 1
+matrix col9[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col9[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = 0
+local ++row
+matrix col9[`row', 1] = _b[hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _se[hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _b[older_sister_hubbywk1_hat]
+local ++row
+matrix col9[`row', 1] = _se[older_sister_hubbywk1_hat]
+matrix col9[`nrows'-1, 1] = e(r2)
+matrix col9[`nrows', 1] = e(N)
+
+// COLUMN 10
+
+// regress
+reg mrmom any_older_sister i.sibs#i.birth_order, robust
+
+// store
+matrix col10 = J(`nrows', 1, 0)
+local row = 1
+matrix col10[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col10[`row', 1] = _se[any_older_sister]
+matrix col10[`nrows'-1, 1] = e(r2)
+matrix col10[`nrows', 1] = e(N)
+
+// COLUMN 11
+
+// regress
+reg mrmom any_older_sister liberal_region older_sister_liberal i.sibs#i.birth_order, robust
+
+// store
+matrix col11 = J(`nrows', 1, 0)
+local row = 1
+matrix col11[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col11[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col11[`row', 1] = _b[liberal_region]
+local ++row
+matrix col11[`row', 1] = _se[liberal_region]
+local ++row
+matrix col11[`row', 1] = _b[older_sister_liberal]
+local ++row
+matrix col11[`row', 1] = _se[older_sister_liberal]
+matrix col11[`nrows'-1, 1] = e(r2)
+matrix col11[`nrows', 1] = e(N)
+
+// COLUMN 12
+
+// generate interaction
+gen older_sister_mrmom_hat = any_older_sister * mrmom_hat
+
+// regress
+reg mrmom any_older_sister mrmom_hat older_sister_mrmom_hat i.sibs#i.birth_order, robust
+
+// store
+matrix col12 = J(`nrows', 1, 0)
+local row = 1
+matrix col12[`row', 1] = _b[any_older_sister]
+local ++row
+matrix col12[`row', 1] = _se[any_older_sister]
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = 0
+local ++row
+matrix col12[`row', 1] = _b[mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _se[mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _b[older_sister_mrmom_hat]
+local ++row
+matrix col12[`row', 1] = _se[older_sister_mrmom_hat]
+matrix col12[`nrows'-1, 1] = e(r2)
+matrix col12[`nrows', 1] = e(N)
+
+// MAKE TABLE and SAVE
+
+// append columns
+matrix GSS_older_sister3 = col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12
+
+// save matrix
+preserve
+clear
+svmat GSS_older_sister3
+
+// export file
+export excel "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results/tables_raw.xlsx", sheet(GSS_older_sister3) sheetreplace
+restore
 
