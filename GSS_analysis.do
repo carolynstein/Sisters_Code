@@ -58,6 +58,53 @@ predict hubbywk1_hat
 reg mrmom i.reg16#incom16, r
 predict mrmom_hat
 
+* GRAPHS ***********************************************************************
+
+cd "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results"
+
+label define spwrksta 0 "not working" 1 "works part-time" 2 "works full-time"
+label val spwrksta spwrksta
+hist spwrksta, scheme(s2mono) xlabel(0/2, valuelabel noticks) xtitle("Wife's Employment Status") discrete xscale(range(0 3))
+graph export "GSS_spwrksta.pdf", replace
+
+hist sp_frac_hrs, width(0.05) xtitle("Wife's Fraction of Total Work Hours") scheme(s2mono)
+graph export "GSS_frac_hours.pdf", replace
+
+label define hw 1 "wife always" 2 "wife usually" 3 "husband or wife" 4 "husband usually" 5 "husband always"
+label val laundry hw
+hist laundry, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Who Does Task?") discrete xscale(range(0 6))
+graph export "GSS_laundry.pdf", replace
+
+label val shopfood hw
+hist shopfood, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Who Does Task?") discrete xscale(range(0 6))
+graph export "GSS_shopfood.pdf", replace
+
+label val dinner hw
+hist dinner, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Who Does Task?") discrete xscale(range(0 6))
+graph export "GSS_dinner.pdf", replace
+
+label val repairs hw
+hist repairs, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Who Does Task?") discrete xscale(range(0 6))
+graph export "GSS_repairs.pdf", replace
+
+label define approve 1 "disapprove" 2 "not sure" 3 "approve"
+label val fework approve
+hist fework, scheme(s2mono) xlabel(1/3, valuelabel noticks) xtitle("Approve or Disapprove?") discrete xscale(range(0 4))
+graph export "GSS_fework.pdf", replace
+
+label define agree1 1 "agree" 2 "not sure" 3 "disagree"
+label val fepol agree1
+hist fepol, scheme(s2mono) xlabel(1/3, valuelabel noticks) xtitle("Agree or Disagree?") discrete xscale(range(0 4))
+graph export "GSS_fepol.pdf", replace
+
+label define agree2 1 "strongly agree" 2 "agree" 3 "neither" 4 "disagree" 5 "strongly disagree"
+label val hubbywk1 agree2
+hist hubbywk1, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Agree or Disagree?") discrete xscale(range(0 6))
+graph export "GSS_hubbywk.pdf", replace
+
+label val mrmom agree2
+hist mrmom, scheme(s2mono) xlabel(1/5, valuelabel noticks labsize(small)) xtitle("Agree or Disagree?") discrete xscale(range(0 6))
+graph export "GSS_mrmom.pdf", replace
 
 * EFFECT OF NEXT SIBLING on WIFE WORK ******************************************
 
@@ -703,7 +750,7 @@ matrix col8[`nrows', 1] = e(N)
 gen next_sib_hubbywk1_hat = next_sib * hubbywk1_hat
 
 // regress
-reg dinner next_sib hubbywk1_hat next_sib_hubbywk1_hat i.older_sib_permut, robust
+reg hubbywk1 next_sib hubbywk1_hat next_sib_hubbywk1_hat i.older_sib_permut, robust
 
 // store
 matrix col9 = J(`nrows', 1, 0)

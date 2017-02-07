@@ -34,6 +34,16 @@ predict income_hat
 reg head_frac_hw i.head_s_grewup#i.parents_poor, r
 predict hw_hat
 
+* GRAPHS ***********************************************************************
+
+cd "/Users/carolynstein/Dropbox (MIT)/Research/Sisters/Results"
+
+hist wife_frac_income, width(0.05) xtitle("Wife's Fraction of Total Income") scheme(s2mono)
+graph export "PSID_frac_income.pdf", replace
+
+hist head_frac_hw, width(0.05) xtitle("Husband's Fraction of Total Housework") scheme(s2mono)
+graph export "PSID_frac_hw.pdf", replace
+
 
 * EFFECT OF NEXT SIBLING *******************************************************
 

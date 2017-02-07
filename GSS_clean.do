@@ -241,12 +241,12 @@ replace fework = 1 if fework1 == 2
 replace fework = 2 if fework1 == .n
 replace fework = 3 if fework1 == 1
 
-// women not suited for politics - 0 = agree, 1 = disagree
+// women not suited for politics - 1 = agree, 2 = not sure, 3 = agree
 rename fepol fepol1
 gen fepol = .
-replace fepol = 1 if fepol1 == 2
+replace fepol = 1 if fepol1 == 1
 replace fepol = 2 if fepol1 == .n
-replace fepol = 3 if fepol1 == 1
+replace fepol = 3 if fepol1 == 2
 
 // vote for a woman president - 0 = no, 1 = yes
 rename fepres fepres1
